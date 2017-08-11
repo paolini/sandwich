@@ -1,4 +1,4 @@
-See http://cvgmt.sns.it/paper/3120/ for an explanation of what a bubble cluster.
+See http://cvgmt.sns.it/paper/3120/ for an explanation of what a bubble cluster is.
 
 The file sandwich+cluster.ipynb is a iPython notebook. You can view the results of the computation by opening the
 file in the github repository: https://github.com/paolini/sandwich/blob/master/sandwich%2Bcluster.ipynb
