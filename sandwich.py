@@ -2,7 +2,7 @@ from numpy import *
 from math import atan2
 import matplotlib.pyplot as plt
 from matplotlib import patches
-from cmath import phase
+from cmath import phase, exp
 import sympy
 from sympy.vector import Vector
 
@@ -35,7 +35,7 @@ def inverse_angle(z, angle):
     suppose a curve has angle @angle at point @z. Compute the angle
     of the inverted curve at the inverted point.
     """
-    return pi + 2*phase(to_z(z)) - angle
+    return pi + 2*phase(z) - angle
 
 """
 helper function used in drawings (not in computations!)
@@ -72,7 +72,6 @@ class Edge(object):
         create a circular arc starting from point @start in direction @direction
         and ending in point @end
         """
-        start, end = to_z(start), to_z(end)
         self.start = start
         self.end = end
         self.direction = direction
@@ -106,9 +105,7 @@ class Edge(object):
         return self.angle * self.radius**2 - self.radius**2 * sin(self.angle) * cos(self.angle)
 
     def trapezoid_area(self):
-        x0, y0 = self.start.real, self.start.imag
-        x1, y1 = self.end.real, self.end.imag
-        return 0.5*(y0 + y1)*(x0 - x1)
+        return 0.5 * (self.start.conjugate() * self.end).imag
 
     def curved_trapezoid_area(self):
         return self.lunette_area() + self.trapezoid_area()
@@ -122,12 +119,8 @@ class Cluster(object):
         self.edges = [] # list of oriented computed edges
         self.regions = [] # list of indices to edges with orientation
 
-    def add_vertex(self, v):
-        self.vertices.append(v)
-
     def add_vertices(self, vertex_list):
-        for v in vertex_list:
-            self.add_vertex(v)
+        self.vertices += vertex_list
 
     def add_edge(self, start, end, direction):
         self.edge_indices.append((start, end, direction))
@@ -157,15 +150,15 @@ class Cluster(object):
         for edge in self.edges:
             edge.draw(plt, color)
         for vertex in self.vertices:
-            plt.plot(*my_points(*map(to_z, self.vertices)), color=color, linestyle="None", marker="o")
+            plt.plot(*my_points(*self.vertices), color=color, linestyle="None", marker="o")
 
 """
 In the following we define the Double Bubble with fixed vertices O and P.
 Also the Sandwich cluster is referred to these fixed points
 """
 
-O = array((0.0, 0.0))
-P = array((1.0, 0))
+O = 0
+P = 1
 
 class DoubleBubble(Cluster):
     """
@@ -211,13 +204,12 @@ class Sandwich(Cluster):
         zangles = [theta + 2*k*pi/3 for k in range(3)]  # three equal angles starting from theta
         # consider the three vertices of the inverted triangle around P.
         # Fix them to have distance rho from P.
-        zs = [P + rho / sqrt(3) * array((cos(angle), sin(angle))) for angle in zangles]
+        zs = [P + rho / sqrt(3) * exp(1j*angle) for angle in zangles]
         self.zs = zs
 
         # vertices ws of the cluster are obtained by inverting the zs
         # also the vertices of other triangular region are constructed by symmetry
-        ws = [1/z.conjugate() for z in map(to_z, zs)] + [invert_other(z) for z in map(to_z, zs)]
-        ws = map(to_v, ws)
+        ws = [1/z.conjugate() for z in zs] + [invert_other(z) for z in zs]
         # compute corresponding directions of arcs
         wangles = [inverse_angle(z, angle) for (z, angle) in zip(zs, zangles)]
 
@@ -262,10 +254,10 @@ class Sandwich(Cluster):
         """
         M = 10
         for z in self.zs:
-            plt.plot(*my_line(to_z(z), to_z(P+M*(z-P))), color=color)
-        plt.plot(*my_points(*map(to_z, self.zs)), color=color, marker="o", linestyle="None")
+            plt.plot(*my_line(z, P+M*(z-P)), color=color)
+        plt.plot(*my_points(*self.zs), color=color, marker="o", linestyle="None")
         for i, z in enumerate(self.zs):
-            arc = my_arc(to_z(z), self.rho, self.theta+(4*i+5)*pi/6, self.theta+(4*i+7)*pi/6)
+            arc = my_arc(z, self.rho, self.theta+(4*i+5)*pi/6, self.theta+(4*i+7)*pi/6)
             plt.plot(*arc, color=color)
 
 from scipy.optimize import bisect
@@ -305,7 +297,7 @@ rho = compute_rho(theta)
 double_bubble = DoubleBubble(theta=theta)
 sandwich = Sandwich(theta=theta, rho=rho)
 
-if True:
+if False:
     plt.figure(figsize=(10, 10))
 
     double_bubble.draw(plt, color="yellow")  # draw double bubble
